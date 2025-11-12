@@ -9,6 +9,8 @@ Each system uses Euler integration for numerical simulation of continuous dynami
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 # ==========================
 # Universal constants
@@ -137,6 +139,53 @@ class InvertedPendulum:
         safe_region (dict): Maps dimension names to [min, max] bounds
         """
         return {"theta": [-0.5, 0.5], "theta_dot": [-1.0, 1.0]}
+
+    def plot_trajectory(self, trajectory=None):
+        safe_region = self.safe_region
+        theta_min = safe_region["theta"][0]
+        theta_max = safe_region["theta"][1]
+        theta_dot_min = safe_region["theta_dot"][0]
+        theta_dot_max = safe_region["theta_dot"][1]
+
+        # Create figure and axis
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # Draw safe region as a rectangle
+        safe_region_rect = patches.Rectangle(
+            (theta_min, theta_dot_min),
+            theta_max - theta_min,
+            theta_dot_max - theta_dot_min,
+            linewidth=2,
+            edgecolor="green",
+            facecolor="lightgreen",
+            alpha=0.3,
+            label="Safe Region",
+        )
+        ax.add_patch(safe_region_rect)
+
+        if trajectory is not None:
+            ax.scatter(trajectory[0][0], trajectory[0][1], label="Trajectory Start")
+            ax.scatter(
+                [i[0] for i in trajectory[1:-1]],
+                [i[1] for i in trajectory[1:-1]],
+                label="Trajectory",
+            )
+            ax.scatter(trajectory[-1][0], trajectory[-1][1], label="Trajectory End")
+
+        # Set labels and title
+        ax.set_xlabel("θ (theta)", fontsize=12)
+        ax.set_ylabel("θ̇ (theta_dot)", fontsize=12)
+        ax.set_title("Trajectory plot", fontsize=14, fontweight="bold")
+
+        ax.legend(fontsize=11)
+
+        # Equal aspect ratio for better visualization
+        ax.set_aspect("equal")
+
+        plt.tight_layout()
+        plt.show()
+
+        return fig, ax
 
 
 # ============================================================================
