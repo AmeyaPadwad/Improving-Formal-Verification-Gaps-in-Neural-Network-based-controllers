@@ -22,8 +22,8 @@ G = 9.81  # Gravity
 # ==========================
 l = 1  # Length of the pendulum pole (meters)
 m = 1  # Mass at the end of the pendulum (kg)
-mu = 0.1  # Friction coefficient (damping term)
-max_torque = 2  # Maximum torque the motor can apply (N*m)
+mu = 0.3  # Friction coefficient (damping term)
+max_torque = 4  # Maximum torque the motor can apply (N*m)
 
 # ==========================
 # Cartpole parameters
@@ -60,11 +60,11 @@ class InvertedPendulum:
 
     """
 
-    def __init__(self, dt=0.05):
+    def __init__(self, dt=0.02):
         """
         Parameters:
         -----------
-        dt (float): Timestep for numerical integration (default 0.05 seconds)
+        dt (float): Timestep for numerical integration (default 0.02 seconds)
         """
         self.g = G
         self.L = l
@@ -84,7 +84,7 @@ class InvertedPendulum:
         Parameters:
         -----------
         state (numpy array): Current state [θ, θ']
-        action (float or array): Control torque to apply
+        action (array): Control torque to apply
 
         Returns:
         --------
@@ -93,7 +93,7 @@ class InvertedPendulum:
         theta, theta_dot = state
 
         # Clip action to physical limits
-        u = np.clip(action, -self.max_torque, self.max_torque)
+        u = np.clip(action[0], -self.max_torque, self.max_torque)
 
         # Compute acceleration: theta_ddot = (g/L)*sin(theta) + u/(m*L^2) - mu*theta_dot
         theta_ddot = (
