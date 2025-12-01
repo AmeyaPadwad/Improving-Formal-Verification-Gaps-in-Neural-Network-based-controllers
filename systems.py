@@ -106,7 +106,7 @@ class InvertedPendulum:
         next_theta_dot = theta_dot + theta_ddot * self.dt
         next_theta = theta + theta_dot * self.dt
 
-        return np.array([next_theta, next_theta_dot])
+        return [next_theta, next_theta_dot]
 
     def is_safe(self, state):
         """
@@ -285,8 +285,9 @@ class CartPole:
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
 
         x_dot = x_dot + xacc * self.tau
-        x = x + x_dot * self.tau
         theta_dot = theta_dot + thetaacc * self.tau
+
+        x = x + x_dot * self.tau
         theta = theta + theta_dot * self.tau
 
         return np.array([x, x_dot, theta, theta_dot])
