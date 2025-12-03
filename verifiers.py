@@ -33,7 +33,8 @@ class verifier:
 
         return input_range
 
-    def output_range_sampling(self, num_samples) -> np.ndarray:
+    def output_bounds_sampling(self, num_samples) -> np.ndarray:
+        start_time = time.time()
         model = self.network.network
         input_range = self.input_range
 
@@ -56,9 +57,10 @@ class verifier:
         # Compute min and max for each output dimension
         output_min = np.min(output_samples, axis=0)
         output_max = np.max(output_samples, axis=0)
-        output_range = np.column_stack([output_min, output_max])
+        output_bounds = np.column_stack([output_min, output_max])
+        elapsed = time.time() - start_time
 
-        return output_range, output_samples
+        return output_bounds, output_samples, round(elapsed, 3)
 
     def plot_output_range_sampling(
         self,
@@ -167,10 +169,36 @@ class verifier:
                 lower = np.maximum(lower, 0)
                 upper = np.maximum(upper, 0)
 
-        output_range = np.column_stack([lower, upper])
+        output_bounds = np.column_stack([lower, upper])
         elapsed = time.time() - start_time
 
-        return output_range, elapsed
+        return output_bounds, elapsed
+
+    def _compute_lipschitz_constant(
+        self, input_range, output_range, input_uppers, input_lowers
+    ):
+        # Compute Lipschitz constant
+        input_range = input_range.squeeze().cpu().numpy()
+        lipschitz_constant = np.max(output_range / (input_range + 1e-8))
+
+        # Get nominal output
+        with torch.no_grad():
+            nominal_state = (input_lowers + input_uppers) / 2
+            nominal_tensor = (
+                torch.FloatTensor(nominal_state).unsqueeze(0).to(self.device)
+            )
+            nominal_output = (
+                self.network.network(nominal_tensor).squeeze().cpu().detach().numpy()
+            )
+
+        # Lipschitz bound: output ∈ [nominal - L·ε, nominal + L·ε]
+        max_input_perturbation = np.max(input_range) / 2
+        lipschitz_margin = lipschitz_constant * max_input_perturbation
+
+        lower_np = np.atleast_1d(nominal_output - lipschitz_margin)
+        upper_np = np.atleast_1d(nominal_output + lipschitz_margin)
+
+        return lower_np, upper_np
 
     def auto_lirpa(self, method: str = "crown") -> Tuple[np.ndarray, float]:
         """
@@ -181,8 +209,9 @@ class verifier:
         method : str
             Verification method: "crown", "ibp", or "alpha-crown"
             - "crown": Fast CROWN propagation
-            - "ibp": Interval Bound Propagation (fastest, loosest)
-            - "alpha-crown": Optimized CROWN (slower, tighter bounds)
+            - "ibp": Interval Bound Propagation
+            - "alpha-crown": Optimized CROWN
+            - "lipschitz": Lipschitz-based bounds
 
         Returns:
         --------
@@ -224,7 +253,7 @@ class verifier:
         bounded_input = BoundedTensor(dummy_input, ptb)
 
         # Compute bounds
-        if method == "ibp":
+        if method == "ibp" or method == "lipschitz":
             lower, upper = bounded_model.compute_bounds(
                 x=(bounded_input,),
                 IBP=True,
@@ -255,7 +284,59 @@ class verifier:
         if upper_np.ndim == 0:
             upper_np = np.array([upper_np])
 
-        output_range = np.column_stack([lower_np, upper_np])
+        if method == "lipschitz":
+            input_range = upper_bound - lower_bound
+            output_range = upper_np - lower_np
+            lower_np, upper_np = self._compute_lipschitz_constant(
+                input_range, output_range, input_uppers, input_lowers
+            )
+
+        output_bounds = np.column_stack([lower_np, upper_np])
         elapsed = time.time() - start_time
 
-        return output_range, elapsed
+        return output_bounds, round(elapsed, 3)
+
+    def compare(self, n_samples, nominal_state):
+        output_bounds = {}
+
+        nominal_output = self.network(nominal_state)
+
+        output_bounds_sampling, output_samples, time_elapsed_sampling = (
+            self.output_bounds_sampling(n_samples)
+        )
+
+        output_bounds_ibp, time_elapsed_ibp = self.auto_lirpa("ibp")
+        output_bounds_crown, time_elapsed_crown = self.auto_lirpa("crown")
+        output_bounds_alpha_crown, time_elapsed_alpha_crown = self.auto_lirpa(
+            "alpha-crown"
+        )
+        output_bounds_lipschitz, time_elapsed_lipschitz = self.auto_lirpa("lipschitz")
+
+        print(f"{nominal_output=}")
+        print(f"{output_bounds_sampling=}, {time_elapsed_sampling=}s")
+        print(f"{output_bounds_ibp=}, {time_elapsed_ibp=}s")
+        print(f"{output_bounds_crown=}, {time_elapsed_crown=}s")
+        print(f"{output_bounds_alpha_crown=}, {time_elapsed_alpha_crown=}s")
+        print(f"{output_bounds_lipschitz=}, {time_elapsed_lipschitz=}s")
+
+        output_bounds["nominal_output"] = nominal_output
+        output_bounds["sampling"] = (
+            output_bounds_sampling,
+            output_samples,
+            time_elapsed_sampling,
+        )
+        output_bounds["ibp"] = (
+            output_bounds_ibp,
+            time_elapsed_ibp,
+        )
+        output_bounds["crown"] = (
+            output_bounds_crown,
+            time_elapsed_crown,
+        )
+        output_bounds["alpha_crown"] = (
+            output_bounds_alpha_crown,
+            time_elapsed_alpha_crown,
+        )
+        output_bounds["lipschitz"] = (output_bounds_lipschitz, time_elapsed_lipschitz)
+
+        return output_bounds

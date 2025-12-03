@@ -8,7 +8,232 @@ import matplotlib.pyplot as plt
 from systems import InvertedPendulum, CartPole
 
 
-class PolicyNetwork(nn.Module):
+import torch
+import torch.nn as nn
+import numpy as np
+from typing import Tuple, Dict, List
+
+
+class Pruner:
+    """
+    Add pruning capabilities to PolicyNetwork.
+    Includes magnitude pruning and activation pruning.
+    """
+
+    def magnitude_pruning(self, sparsity: float = 0.5, verbose: bool = True) -> Dict:
+        """
+        Magnitude-based pruning: removes weights with smallest absolute values.
+
+        Parameters:
+        -----------
+        sparsity : float
+            Target sparsity (0.5 = remove 50% of weights)
+        verbose : bool
+            Print pruning statistics
+
+        Returns:
+        --------
+        stats : dict
+            Pruning statistics (layers pruned, weights removed, etc.)
+        """
+        stats = {"total_weights": 0, "pruned_weights": 0, "layer_stats": []}
+
+        for name, module in self.network.named_modules():
+            if isinstance(module, nn.Linear):
+                weights = module.weight.data.abs()
+                threshold = torch.quantile(weights, sparsity)
+                mask = weights > threshold
+                module.weight.data = module.weight.data * mask.float()
+
+                # Track statistics
+                total = weights.numel()
+                pruned = (~mask).sum().item()
+
+                stats["total_weights"] += total
+                stats["pruned_weights"] += pruned
+                stats["layer_stats"].append(
+                    {
+                        "layer": name,
+                        "total": total,
+                        "pruned": pruned,
+                        "sparsity": pruned / total,
+                    }
+                )
+
+        if verbose:
+            print("=" * 70)
+            print("MAGNITUDE PRUNING RESULTS")
+            print("=" * 70)
+            for layer_stat in stats["layer_stats"]:
+                print(f"{layer_stat['layer']}")
+                print(
+                    f"  Pruned: {layer_stat['pruned']}/{layer_stat['total']} ({layer_stat['sparsity']*100:.1f}%)"
+                )
+            print(
+                f"\nTotal pruned: {stats['pruned_weights']}/{stats['total_weights']} ({100*stats['pruned_weights']/stats['total_weights']:.1f}%)"
+            )
+
+        return stats
+
+    def activation_pruning(
+        self,
+        dataloader: torch.utils.data.DataLoader,
+        sparsity: float = 0.5,
+        verbose: bool = True,
+    ) -> Dict:
+        """
+        Activation-based pruning: removes neurons that are rarely activated.
+
+        Parameters:
+        -----------
+        dataloader : DataLoader
+            Training or validation dataloader to estimate activations
+        sparsity : float
+            Target sparsity (0.5 = remove 50% of neurons)
+        verbose : bool
+            Print pruning statistics
+
+        Returns:
+        --------
+        stats : dict
+            Pruning statistics
+        """
+        self.network.eval()
+        stats = {"total_neurons": 0, "pruned_neurons": 0, "layer_stats": []}
+
+        # Collect activation statistics
+        activation_stats = {}
+
+        def get_activation_stats(module, input, output):
+            """Hook to collect activation statistics."""
+            if isinstance(module, nn.ReLU):
+                # Count how often ReLU is active (output > 0)
+                activation_count = (output > 0).sum(dim=0)  # Sum across batch
+                activation_stats[id(module)] = activation_count
+
+        # Register hooks
+        hooks = []
+        for module in self.network.modules():
+            if isinstance(module, nn.ReLU):
+                hook = module.register_forward_hook(get_activation_stats)
+                hooks.append(hook)
+
+        # Forward pass through data to collect stats
+        with torch.no_grad():
+            total_samples = 0
+            for batch_idx, (states_batch, _) in enumerate(dataloader):
+                states_batch = states_batch.to(self.device)
+                _ = self.network(states_batch)
+                total_samples += states_batch.shape[0]
+
+        # Remove hooks
+        for hook in hooks:
+            hook.remove()
+
+        # Prune neurons based on activation frequency
+        neuron_idx = 0
+        for name, module in self.network.named_modules():
+            if isinstance(module, nn.Linear):
+                activation_freq = activation_stats.get(id(module), None)
+
+                if activation_freq is not None:
+                    activation_freq = activation_freq / total_samples
+                    threshold = torch.quantile(activation_freq, sparsity)
+                    inactive_mask = activation_freq < threshold
+
+                    # Prune connections to inactive neurons
+                    module.weight.data[inactive_mask, :] = 0
+                    if module.bias is not None:
+                        module.bias.data[inactive_mask] = 0
+
+                    # Track statistics
+                    total = module.weight.shape[0]
+                    pruned = inactive_mask.sum().item()
+
+                    stats["total_neurons"] += total
+                    stats["pruned_neurons"] += pruned
+                    stats["layer_stats"].append(
+                        {
+                            "layer": name,
+                            "total": total,
+                            "pruned": pruned,
+                            "sparsity": pruned / total,
+                            "activation_freq": activation_freq.cpu().numpy(),
+                        }
+                    )
+
+        if verbose:
+            print("ACTIVATION PRUNING RESULTS")
+            for layer_stat in stats["layer_stats"]:
+                print(f"{layer_stat['layer']}")
+                print(
+                    f"  Pruned: {layer_stat['pruned']}/{layer_stat['total']} ({layer_stat['sparsity']*100:.1f}%)"
+                )
+                print(
+                    f"  Avg activation frequency: {layer_stat['activation_freq'].mean():.4f}"
+                )
+            if stats["total_neurons"] > 0:
+                print(
+                    f"\nTotal pruned: {stats['pruned_neurons']}/{stats['total_neurons']} ({100*stats['pruned_neurons']/stats['total_neurons']:.1f}%)"
+                )
+
+        return stats
+
+    def get_sparsity(self) -> float:
+        """
+        Calculate current network sparsity (percentage of zero weights).
+
+        Returns:
+        --------
+        sparsity : float
+            Current sparsity (0.0 = dense, 1.0 = all zeros)
+        """
+        total_params = 0
+        zero_params = 0
+
+        for module in self.network.modules():
+            if isinstance(module, nn.Linear):
+                total_params += module.weight.numel()
+                zero_params += (module.weight == 0).sum().item()
+                if module.bias is not None:
+                    total_params += module.bias.numel()
+                    zero_params += (module.bias == 0).sum().item()
+
+        if total_params == 0:
+            return 0.0
+
+        return zero_params / total_params
+
+    def print_network_stats(self):
+        """Print detailed network statistics."""
+        total_params = 0
+        total_nonzero = 0
+
+        print("NETWORK STATISTICS")
+
+        for name, module in self.network.named_modules():
+            if isinstance(module, nn.Linear):
+                params = module.weight.numel()
+                nonzero = (module.weight != 0).sum().item()
+
+                total_params += params
+                total_nonzero += nonzero
+
+                sparsity = 1.0 - (nonzero / params)
+                print(f"{name}")
+                print(
+                    f"  Params: {params:,} | Non-zero: {nonzero:,} | Sparsity: {sparsity*100:.1f}%"
+                )
+
+        total_sparsity = (
+            1.0 - (total_nonzero / total_params) if total_params > 0 else 0.0
+        )
+        print(
+            f"\nTotal: {total_params:,} params | {total_nonzero:,} non-zero | Sparsity: {total_sparsity*100:.1f}%"
+        )
+
+
+class PolicyNetwork(nn.Module, Pruner):
     """
     Neural network that learns to mimic LQR expert controller.
 
@@ -26,6 +251,9 @@ class PolicyNetwork(nn.Module):
             Dimension of action space
         """
         super().__init__()
+        state_dim = 0
+        action_dim = 0
+
         if isinstance(system, InvertedPendulum):
             state_dim = 2
             action_dim = 1

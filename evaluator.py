@@ -70,12 +70,7 @@ def test_random_trajectories(
 
         for step in range(n_steps):
             action = controller(state)
-            try:
-                state = system.step(state, action)
-            except:
-                print(state)
-                print(action)
-                return
+            state = system.step(state, action)
             trajectory.append(state.copy())
 
             if not system.is_safe(state):
