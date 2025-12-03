@@ -1,9 +1,11 @@
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
+from systems import InvertedPendulum, CartPole
 
 
 class PolicyNetwork(nn.Module):
@@ -14,7 +16,7 @@ class PolicyNetwork(nn.Module):
         Input (state) -> Hidden layers -> Output (action)
     """
 
-    def __init__(self, state_dim, action_dim, learning_rate=1e-3, device="cpu"):
+    def __init__(self, system, learning_rate=1e-3, device="cuda"):
         """
         Parameters:
         -----------
@@ -24,6 +26,12 @@ class PolicyNetwork(nn.Module):
             Dimension of action space
         """
         super().__init__()
+        if isinstance(system, InvertedPendulum):
+            state_dim = 2
+            action_dim = 1
+        elif isinstance(system, CartPole):
+            state_dim = 4
+            action_dim = 1
 
         layers = []
         layers.append(nn.Linear(state_dim, 64))
