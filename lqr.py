@@ -118,8 +118,8 @@ class LQRExpert:
         if isinstance(self.system, InvertedPendulum):
             # Pendulum: state = [θ, θ̇]
             # Penalize angle heavily (safety), moderate velocity
-            Q = np.diag([100.0, 10.0])
-            R = np.array([[1.0]])
+            Q = np.diag([500.0, 50.0])
+            R = np.array([[0.1]])
 
         elif isinstance(self.system, CartPole):
             # CartPole: state = [x, ẋ, θ, θ̇]
@@ -158,4 +158,10 @@ class LQRExpert:
             Control action(s)
         """
         action = -self.K @ state
+        theta, theta_dot = state
+
+        # Approaching danger zone
+        if abs(theta) > 0.3:
+            action += -1.5 * np.sign(theta_dot) * abs(theta_dot) ** 1.5
+
         return action

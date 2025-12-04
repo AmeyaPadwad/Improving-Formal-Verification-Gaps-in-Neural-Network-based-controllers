@@ -1,0 +1,93 @@
+Pendulum
+
+    ReLU
+        Base
+            Success rate: 82.0
+            nominal_output=array([0.09053898], dtype=float32)
+            output_bounds_sampling=array([[-0.7341191,  0.7207315]], dtype=float32), time_elapsed_sampling=0.013s
+            output_bounds_ibp=array([[-1.6743523,  1.5151914]], dtype=float32), time_elapsed_ibp=0.152s
+            output_bounds_crown=array([[-1.3698876,  1.0136952]], dtype=float32), time_elapsed_crown=1.635s
+            output_bounds_alpha_crown=array([[-0.81430316,  0.8493817 ]], dtype=float32), time_elapsed_alpha_crown=5.079s
+            output_bounds_lipschitz=array([[-3.1886978 ,  3.19038s965]]), time_elapsed_lipschitz=0.025s
+        
+        Magnitude Pruning
+            Sparsity = 0.1
+                Baseline success rate: 89.0
+                Success after pruning: 84.0
+                nominal_output=array([0.13063192], dtype=float32)
+                output_bounds_sampling=array([[-0.68761706,  0.71347165]], dtype=float32), time_elapsed_sampling=0.002s
+                output_bounds_ibp=array([[-1.5425266,  1.4076248]], dtype=float32), time_elapsed_ibp=0.052s
+                output_bounds_crown=array([[-1.1354005,  0.9963893]], dtype=float32), time_elapsed_crown=0.047s
+                output_bounds_alpha_crown=array([[-0.80659413,  0.82886964]], dtype=float32), time_elapsed_alpha_crown=1.556s
+                output_bounds_lipschitz=array([[-2.94856058,  2.95174231]]), time_elapsed_lipschitz=0.029s
+
+            Sparsity = 0.3
+                Baseline success rate: 84.0
+                Success after pruning: 91.0
+                nominal_output=array([0.26875496], dtype=float32)
+                output_bounds_sampling=array([[-0.72694933,  0.71608615]], dtype=float32), time_elapsed_sampling=0.011s
+                output_bounds_ibp=array([[-1.0729085,  1.0375141]], dtype=float32), time_elapsed_ibp=0.02s
+                output_bounds_crown=array([[-0.9255303 ,  0.98620284]], dtype=float32), time_elapsed_crown=0.043s
+                output_bounds_alpha_crown=array([[-0.7423047 ,  0.74927944]], dtype=float32), time_elapsed_alpha_crown=1.417s
+                output_bounds_lipschitz=array([[-2.10792838,  2.11291684]]), time_elapsed_lipschitz=0.034s
+
+            Sparsity = 0.5
+                Baseline success rate: 89.0
+                Success after pruning: 86.0
+                nominal_output=array([0.02282476], dtype=float32)
+                output_bounds_sampling=array([[-0.7162149,  0.727484 ]], dtype=float32), time_elapsed_sampling=0.001s
+                output_bounds_ibp=array([[-1.1334487,  1.1010665]], dtype=float32), time_elapsed_ibp=0.025s
+                output_bounds_crown=array([[-0.9740857,  0.9360632]], dtype=float32), time_elapsed_crown=0.038s
+                output_bounds_alpha_crown=array([[-0.74315536,  0.7445248 ]], dtype=float32), time_elapsed_alpha_crown=1.196s
+                output_bounds_lipschitz=array([[-2.2346807 ,  2.23434968]]), time_elapsed_lipschitz=0.038s
+            
+            Sparsity = 0.7
+                Baseline success rate: 89.0
+                Success after pruning: 87.0
+                nominal_output=array([0.01315308], dtype=float32)
+                output_bounds_sampling=array([[-0.72173774,  0.73095036]], dtype=float32), time_elapsed_sampling=0.016s
+                output_bounds_ibp=array([[-1.1266723,  1.1420865]], dtype=float32), time_elapsed_ibp=0.023s
+                output_bounds_crown=array([[-1.3601491,  0.7406688]], dtype=float32), time_elapsed_crown=0.032s
+                output_bounds_alpha_crown=array([[-0.7420359,  0.7406541]], dtype=float32), time_elapsed_alpha_crown=0.851s
+                output_bounds_lipschitz=array([[-2.26705082,  2.27046673]]), time_elapsed_lipschitz=0.015s
+
+        Activation Pruning
+            Sparsity = 0.1
+                Baseline success rate: 84.0
+                Success after pruning: 81.0
+                nominal_output=array([0.13160706], dtype=float32)
+                output_bounds_sampling=array([[-0.68981045,  0.7176698 ]], dtype=float32), time_elapsed_sampling=0.001s
+                output_bounds_ibp=array([[-1.5529444,  1.3929045]], dtype=float32), time_elapsed_ibp=0.033s
+                output_bounds_crown=array([[-1.1360149 ,  0.99800795]], dtype=float32), time_elapsed_crown=0.092s
+                output_bounds_alpha_crown=array([[-0.80410284,  0.82600236]], dtype=float32), time_elapsed_alpha_crown=1.156s
+                output_bounds_lipschitz=array([[-2.94419182,  2.94750606]]), time_elapsed_lipschitz=0.017s
+
+            Sparsity = 0.3
+                Baseline success rate: 89.0
+                Success after pruning: 87.0
+                nominal_output=array([0.05150986], dtype=float32)
+                output_bounds_sampling=array([[-0.70195466,  0.7341579 ]], dtype=float32), time_elapsed_sampling=0.002s
+                output_bounds_ibp=array([[-1.5768896,  1.418507 ]], dtype=float32), time_elapsed_ibp=0.009s
+                output_bounds_crown=array([[-1.1405137,  0.9942088]], dtype=float32), time_elapsed_crown=0.049s
+                output_bounds_alpha_crown=array([[-0.8108037 ,  0.83346015]], dtype=float32), time_elapsed_alpha_crown=1.019s
+                output_bounds_lipschitz=array([[-2.99601922,  2.99477401]]), time_elapsed_lipschitz=0.023s
+
+            Sparsity = 0.5
+                Baseline success rate: 85.0
+                Success after pruning: 86.0
+                nominal_output=array([0.05156994], dtype=float32)
+                output_bounds_sampling=array([[-0.7073851 ,  0.71836966]], dtype=float32), time_elapsed_sampling=0.001s
+                output_bounds_ibp=array([[-1.5562121,  1.3960742]], dtype=float32), time_elapsed_ibp=0.019s
+                output_bounds_crown=array([[-1.1347885,  1.0027752]], dtype=float32), time_elapsed_crown=0.031s
+                output_bounds_alpha_crown=array([[-0.8083576,  0.8300046]], dtype=float32), time_elapsed_alpha_crown=1.165s
+                output_bounds_lipschitz=array([[-2.95155858,  2.95301391]]), time_elapsed_lipschitz=0.033s
+            
+            Sparsity = 0.7
+                Baseline success rate: 88.0
+                Success after pruning: 84.0
+                nominal_output=array([-0.01465416], dtype=float32)
+                output_bounds_sampling=array([[-0.7284196 ,  0.70102763]], dtype=float32), time_elapsed_sampling=0.001s
+                output_bounds_ibp=array([[-1.5907412,  1.4320493]], dtype=float32), time_elapsed_ibp=0.019s
+                output_bounds_crown=array([[-1.5239732,  1.0050876]], dtype=float32), time_elapsed_crown=0.034s
+                output_bounds_alpha_crown=array([[-0.8089726,  0.8347924]], dtype=float32), time_elapsed_alpha_crown=1.182s
+                output_bounds_lipschitz=array([[-3.02249669,  3.02308418]]), time_elapsed_lipschitz=0.028s

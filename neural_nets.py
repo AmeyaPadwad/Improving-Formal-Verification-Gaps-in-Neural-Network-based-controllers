@@ -61,9 +61,7 @@ class Pruner:
                 )
 
         if verbose:
-            print("=" * 70)
             print("MAGNITUDE PRUNING RESULTS")
-            print("=" * 70)
             for layer_stat in stats["layer_stats"]:
                 print(f"{layer_stat['layer']}")
                 print(
@@ -261,14 +259,14 @@ class PolicyNetwork(nn.Module, Pruner):
             state_dim = 4
             action_dim = 1
 
-        layers = []
-        layers.append(nn.Linear(state_dim, 64))
-        layers.append(nn.ReLU())
-        layers.append(nn.Linear(64, 32))
-        layers.append(nn.ReLU())
-        layers.append(nn.Linear(32, action_dim))
+        self.network = nn.Sequential(
+            nn.Linear(state_dim, 16),
+            nn.ReLU(),
+            nn.Linear(16, 8),
+            nn.ReLU(),
+            nn.Linear(8, action_dim),
+        )
 
-        self.network = nn.Sequential(*layers)
         self.learning_rate = learning_rate
         self.device = device
         self.to(device)
@@ -278,6 +276,8 @@ class PolicyNetwork(nn.Module, Pruner):
         self.val_losses = []
         self.state_mean = None
         self.state_std = None
+        self.action_mean = None
+        self.action_std = None
         self.train_loader = None
         self.val_loader = None
 
@@ -294,15 +294,20 @@ class PolicyNetwork(nn.Module, Pruner):
         action : np.array of shape (action_dim,)
         """
         with torch.no_grad():
-            # Convert to tensor and normalize
+            # Convert state to tensor and normalize
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             state_normalized = (
                 state_tensor - self.state_mean.to(self.device)
             ) / self.state_std.to(self.device)
 
-            # Get action
-            action_tensor = self.network(state_normalized)
-            action = action_tensor.cpu().numpy().squeeze()
+            # Get normalized action tensor
+            action_tensor_normalized = self.network(state_normalized)
+
+            # Denormalize action tensor
+            action = action_tensor_normalized * self.action_std.to(
+                self.device
+            ) + self.action_mean.to(self.device)
+            action = action.cpu().numpy().squeeze()
 
         return np.array([action])
 
@@ -328,11 +333,6 @@ class PolicyNetwork(nn.Module, Pruner):
         states_tensor = torch.FloatTensor(states)
         actions_tensor = torch.FloatTensor(actions)
 
-        # Normalize states
-        self.state_mean = states_tensor.mean(dim=0)
-        self.state_std = states_tensor.std(dim=0) + 1e-8
-        states_normalized = (states_tensor - self.state_mean) / self.state_std
-
         # Train-val split
         n_samples = len(states)
         n_train = int(n_samples * train_split)
@@ -341,15 +341,27 @@ class PolicyNetwork(nn.Module, Pruner):
         train_indices = indices[:n_train]
         val_indices = indices[n_train:]
 
-        # Create datasets
-        train_dataset = TensorDataset(
-            states_normalized[train_indices], actions_tensor[train_indices]
-        )
-        val_dataset = TensorDataset(
-            states_normalized[val_indices], actions_tensor[val_indices]
-        )
+        train_states = states_tensor[train_indices]
+        train_actions = actions_tensor[train_indices]
+        val_states = states_tensor[val_indices]
+        val_actions = actions_tensor[val_indices]
+
+        # Normalize using train statistics
+        self.state_mean = train_states.mean(dim=0)
+        self.state_std = train_states.std(dim=0) + 1e-8
+        self.action_mean = train_actions.mean(dim=0)
+        self.action_std = train_actions.std(dim=0) + 1e-8
+
+        train_states_norm = (train_states - self.state_mean) / self.state_std
+        val_states_norm = (val_states - self.state_mean) / self.state_std
+
+        train_actions_norm = (train_actions - self.action_mean) / self.action_std
+        val_actions_norm = (val_actions - self.action_mean) / self.action_std
 
         # Create dataloaders
+        train_dataset = TensorDataset(train_states_norm, train_actions_norm)
+        val_dataset = TensorDataset(val_states_norm, val_actions_norm)
+
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
@@ -483,6 +495,8 @@ class PolicyNetwork(nn.Module, Pruner):
                 "model_state_dict": self.network.state_dict(),
                 "state_mean": self.state_mean,
                 "state_std": self.state_std,
+                "action_mean": self.action_mean,
+                "action_std": self.action_std,
             },
             filepath,
         )
@@ -494,4 +508,6 @@ class PolicyNetwork(nn.Module, Pruner):
         self.network.load_state_dict(checkpoint["model_state_dict"])
         self.state_mean = checkpoint["state_mean"]
         self.state_std = checkpoint["state_std"]
+        self.action_mean = checkpoint["action_mean"]
+        self.action_std = checkpoint["action_std"]
         print(f"Model loaded from {filepath}")

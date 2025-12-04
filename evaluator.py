@@ -48,7 +48,7 @@ def test_single_trajectory(
 
 
 def test_random_trajectories(
-    controller, system, n_trials=50, n_steps=100, verbose=False
+    controller, system, n_trials=50, n_steps=100, verbose=False, safe_region_limit= 1
 ):
     """Test on random starting states within safe region."""
 
@@ -63,7 +63,7 @@ def test_random_trajectories(
         state = np.zeros(state_dim)
         for j, (dim_name, (min_val, max_val)) in enumerate(safe_region.items()):
             # Start within 80% of safe region
-            state[j] = np.random.uniform(min_val * 0.8, max_val * 0.8)
+            state[j] = np.random.uniform(min_val * safe_region_limit, max_val * safe_region_limit)
 
         trajectory = [state.copy()]
         is_safe = True
