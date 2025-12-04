@@ -239,7 +239,7 @@ class PolicyNetwork(nn.Module, Pruner):
         Input (state) -> Hidden layers -> Output (action)
     """
 
-    def __init__(self, system, learning_rate=1e-3, device="cuda"):
+    def __init__(self, system, learning_rate=1e-3, device="cuda", activation="relu"):
         """
         Parameters:
         -----------
@@ -259,13 +259,22 @@ class PolicyNetwork(nn.Module, Pruner):
             state_dim = 4
             action_dim = 1
 
-        self.network = nn.Sequential(
-            nn.Linear(state_dim, 16),
-            nn.ReLU(),
-            nn.Linear(16, 8),
-            nn.ReLU(),
-            nn.Linear(8, action_dim),
-        )
+        if activation == "relu":
+            self.network = nn.Sequential(
+                nn.Linear(state_dim, 16),
+                nn.ReLU(),
+                nn.Linear(16, 8),
+                nn.ReLU(),
+                nn.Linear(8, action_dim),
+            )
+        else:
+            self.network = nn.Sequential(
+                nn.Linear(state_dim, 16),
+                nn.Tanh(),
+                nn.Linear(16, 8),
+                nn.Tanh(),
+                nn.Linear(8, action_dim),
+            )
 
         self.learning_rate = learning_rate
         self.device = device
