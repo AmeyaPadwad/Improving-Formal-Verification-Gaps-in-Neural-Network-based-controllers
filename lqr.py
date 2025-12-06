@@ -70,7 +70,6 @@ class LQRExpert:
         mu = self.system.mu
 
         A = np.array([[0, 1], [g / L, -mu / (m * L**2)]])
-
         B = np.array([[0], [1 / (m * L**2)]])
 
         return A, B
@@ -78,15 +77,7 @@ class LQRExpert:
     def _linearize_cartpole(self):
         """
         Linearize CartPole around upright equilibrium.
-
-        State: x = [x, ẋ, θ, θ̇]
-        Control: F (force)
-
-        Linearized dynamics around θ=0, ẋ=0, θ̇=0:
-            [ẋ    ]   [0  1  0                    0] [x  ]   [0]
-            [ẍ    ] = [0  0  -m_p*g/m_c           0] [ẋ  ] + [1/m_c] @ F
-            [θ̇    ]   [0  0  0                    1] [θ  ]   [0]
-            [θ̈    ]   [0  0  g*(m_c+m_p)/(m_c*L)  0] [θ̇ ]   [-1/(m_c*L)]
+        Use analytical linearization (simple first-order Taylor expansion).
         """
         m_c = self.system.masscart
         m_p = self.system.masspole
@@ -126,7 +117,7 @@ class LQRExpert:
             # Penalize angle most (primary safety concern)
             # Then position, then velocities
             Q = np.diag([10.0, 1.0, 100.0, 10.0])
-            R = np.array([[1]])
+            R = np.array([[1.0]])
 
         return Q, R
 
@@ -158,10 +149,19 @@ class LQRExpert:
             Control action(s)
         """
         action = -self.K @ state
-        theta, theta_dot = state
 
-        # Approaching danger zone
-        if abs(theta) > 0.3:
-            action += -1.5 * np.sign(theta_dot) * abs(theta_dot) ** 1.5
+        # Add nonlinear damping based on system type
+        if isinstance(self.system, InvertedPendulum):
+            theta, theta_dot = state
+            if abs(theta) > 0.3:
+                action += -1.5 * np.sign(theta_dot) * abs(theta_dot) ** 1.5
+
+        elif isinstance(self.system, CartPole):
+            x, x_dot, theta, theta_dot = state
+            if abs(theta) > 0.15 and abs(theta_dot) > 0.2:
+                action += -0.5 * np.sign(theta_dot) * abs(theta_dot)
+
+            if abs(x) > 2.0 and abs(x_dot) > 1.0:
+                action += -0.2 * np.sign(x_dot) * abs(x_dot)
 
         return action
