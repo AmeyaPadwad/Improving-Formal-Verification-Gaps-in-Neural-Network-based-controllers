@@ -8,7 +8,7 @@ Pendulum
             output_bounds_ibp=array([[-1.6743523,  1.5151914]], dtype=float32), time_elapsed_ibp=0.152s
             output_bounds_crown=array([[-1.3698876,  1.0136952]], dtype=float32), time_elapsed_crown=1.635s
             output_bounds_alpha_crown=array([[-0.81430316,  0.8493817 ]], dtype=float32), time_elapsed_alpha_crown=5.079s
-            output_bounds_lipschitz=array([[-3.1886978 ,  3.19038s965]]), time_elapsed_lipschitz=0.025s
+            output_bounds_lipschitz=array([[-3.1886978 ,  3.19038965]]), time_elapsed_lipschitz=0.025s
         
         Magnitude Pruning
             Sparsity = 0.1
