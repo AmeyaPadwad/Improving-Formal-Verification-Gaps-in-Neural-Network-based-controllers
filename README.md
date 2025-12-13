@@ -163,6 +163,6 @@ Pruning dramatically accelerates verification:
 
 ## 📄 Report
 
-See the [`Final Project Report`](VML_Final_Report.pdf) (included in repository) for detailed analysis, comprehensive graphs, pruning sensitivity curves, computation times, and full experimental methodology.
+See the [`Final Project Report`](./VML%20Project%20Report.pdf) for detailed analysis, comprehensive graphs, pruning sensitivity curves, computation times, and full experimental methodology.
 
 ---
